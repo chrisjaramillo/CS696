@@ -5,14 +5,24 @@
       (* (item :amount) (item :quantity))
       (+ (* (item :amount) (item :quantity)) (bill-total rest)))))
 ; Question Two
+(defn update-bill [bill item index]
+  (assoc bill index (assoc-in (nth bill index) [:quantity] (+ (item :quantity) ((nth bill index ) :quantity)))))
 (defn map-index-in-vec [xs newmap currindex]
   (if (>= currindex (count xs))
     nil
     (if (= ((nth xs currindex) :name) (newmap :name))
       currindex
       (map-index-in-vec xs newmap (+ currindex 1)))))
+(defn bill-add [item bill]
+  (let [index (map-index-in-vec bill item 0)]
+    (if (nil? index)
+      (assoc bill (count bill) item)
+      (update-bill bill item index))))
 (defn add-to-bill [bill items]
-  (into bill items))
+  (let [[item & rest] items]
+  (if (empty? rest)
+    (bill-add item bill)
+    (add-to-bill (bill-add item bill) rest))))
 ; Question Three
 (defn poly-term [coll]
   (let [[coef power]coll]
