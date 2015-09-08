@@ -5,6 +5,12 @@
       (* (item :amount) (item :quantity))
       (+ (* (item :amount) (item :quantity)) (bill-total rest)))))
 ; Question Two
+(defn map-index-in-vec [xs newmap currindex]
+  (if (>= currindex (count xs))
+    nil
+    (if (= ((nth xs currindex) :name) (newmap :name))
+      currindex
+      (map-index-in-vec xs newmap (+ currindex 1)))))
 (defn add-to-bill [bill items]
   (into bill items))
 ; Question Three
