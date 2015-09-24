@@ -33,3 +33,14 @@
     (count matches)))
 
 ; Question 5
+(defn most-frequent-word [text length]
+  (let [substrings (all-substrings-of-length text length)
+        substring-counts (frequencies substrings)
+        inverted (clojure.set/map-invert substring-counts)
+        count-keys (keys inverted)
+        key-max (apply max count-keys)]
+    (filter (comp #{key-max} substring-counts) (keys substring-counts))))
+
+;Question 6
+
+
