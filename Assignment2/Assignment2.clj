@@ -42,5 +42,17 @@
     (filter (comp #{key-max} substring-counts) (keys substring-counts))))
 
 ;Question 6
+(defn filter-map-by-val [val coll]
+  (filter #(= (second %) val) coll))
 
+(defn find-clumps [text k l t]
+  (let [l-substrings (all-substrings-of-length text l)
+        k-substrings (map #(all-substrings-of-length % k) l-substrings)
+        k-frequencies (map frequencies k-substrings)]
+    (remove nil? (distinct (flatten(map #(keys %)(map #(filter-map-by-val t %) k-frequencies)))))))
 
+;Question 7
+(defn maximum-spread [path]
+  (slurp path))
+
+(maximum-spread "http://www.eli.sdsu.edu/courses/fall15/cs696/assignments/weather.dat")
