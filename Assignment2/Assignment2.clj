@@ -52,7 +52,13 @@
     (remove nil? (distinct (flatten(map #(keys %)(map #(filter-map-by-val t %) k-frequencies)))))))
 
 ;Question 7
+(require '[clojure.string :as str])
+
 (defn maximum-spread [path]
-  (slurp path))
+  (let [file (slurp path)
+        file-lines (flatten(list (str/split file #"\n")))
+        map-lines (map #(str/split % #"\t") file-lines)
+        map-map (map #(into {} (read-string (first %)) (read-string (second %))) map-lines)]
+    map-map))
 
 (maximum-spread "http://www.eli.sdsu.edu/courses/fall15/cs696/assignments/weather.dat")
