@@ -57,8 +57,10 @@
 (defn maximum-spread [path]
   (let [file (slurp path)
         file-lines (flatten(list (str/split file #"\n")))
-        map-lines (map #(str/split % #"\t") file-lines)
-        map-map (map #(into {} (read-string (first %)) (read-string (second %))) map-lines)]
-    map-map))
+        map-lines (rest (rest (map #(str/split % #"\t") file-lines)))
+        map-vals (map #( list  (- (read-string (str/replace (second %) #"\*" "")) (read-string (str/replace (nth % 3) #"\*" ""))) (first %) )  map-lines)
+        mapped-vals (apply hash-map (flatten map-vals))
+        max-key (apply max (keys mapped-vals))
+        max-day (get mapped-vals max-key)]
+    max-day))
 
-(maximum-spread "http://www.eli.sdsu.edu/courses/fall15/cs696/assignments/weather.dat")
