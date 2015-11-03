@@ -7,31 +7,27 @@
 
 (defmulti exec :command)
 
-(defmethod exec "pen" [x]
-  (reset! command-message (str "pen" (:value x))))
-
-(defmethod exec "move" [x]
-  (reset! command-message "move"))
-
-(defmethod exec "turn" [x]
-  (reset! command-message "turn"))
-
-(defmulti me-undo :command)
-
-(defmethod undo "pen" [x]
-  (reset! command-message (str "undo pen" (:value x))))
-
-(defmethod undo "move" [x]
-  (reset! command-message (str "undo move" (:value x))))
-
-(defmethod undo "turn" [x]
-  (reset! command-message (str "undo turn" (:value x))))
-
 (def todo-commands (atom []))
 
 (def completed-commands (atom []))
 
-(def command-keys [:key :value])
+(def command-keys [:command :value])
+
+(defmethod exec "pen" [x]
+  (reset! command-message (str "pen " (:value x)))
+  (if (= "up" (:value x))
+    (q/no-stroke)
+    (q/stroke 0 0 0)))
+
+(defmethod exec "move" [x]
+  (reset! command-message (str "move " (:value x)))
+  (q/line 0 0 (read-string (:value x)) 0)
+  (q/translate (read-string (:value x)) 0))
+
+(defmethod exec "turn" [x]
+  (let [val (read-string (:value x))]
+    (reset! command-message (str "turn " val))
+    (q/rotate (q/radians val))))
 
 (defn vec->map [ks vs]
   (let [[key1 key2] ks
@@ -39,7 +35,7 @@
     {key1 val1 key2 val2}))
 
 (defn get-lines [file-name]
-  (with-open [r (cjio/reader file-name)]
+  (with-open [r (cjio/reader (cjio/resource file-name))]
     (doall (line-seq r))))
 
 (defn file->coll [file-name]
@@ -49,27 +45,37 @@
   (map (partial vec->map command-keys) (file->coll file-name)))
 
 (defn init-command-list [file-name]
-  (reset! todo-commands (into '() (read-comand-file file-name))))
+  (reset! todo-commands (into [] (read-comand-file file-name))))
 
 (defn setup []
   (q/frame-rate 60)
-  (init-command-list "/Users/christopherjaramillo/Documents/myTestTurtle.txt")
-  (reset! command-message (str @todo-commands)))
+  (init-command-list "turtleTester.txt"))
+
+(defn run-completed
+  []
+  (q/background 240)
+  (doseq [command @completed-commands]
+    (exec command)))
 
 (defn run-all
   []
-  (reset! command-message "Run all"))
+  (reset! completed-commands (into [] (concat @completed-commands @todo-commands)))
+  (reset! todo-commands '())
+  (run-completed))
 
 (defn back
   []
-  (reset! command-message "Back"))
+  (when (seq @completed-commands)
+    (let [command (peek @completed-commands)]
+      (swap! completed-commands pop)
+      (reset! todo-commands (conj @todo-commands command)))))
 
 (defn forward
   []
-  (let [command (peek @todo-commands)]
-    ;(swap! todo-commands pop)
-    ;(reset! completed-commands (conj completed-commands command))
-    (exec command)))
+  (when (seq @todo-commands)
+    (let [command (peek @todo-commands)]
+      (swap! todo-commands pop)
+      (reset! completed-commands (conj @completed-commands command)))))
 
 (defn keyboard-action
   []
@@ -84,6 +90,11 @@
   []
   (q/background 240)
   (q/fill 0)
+  (q/translate
+    (/ (q/width) 2)
+    (/ (q/height) 2))
+  (run-completed)
+  (q/reset-matrix)
   (q/text @command-message 10 10))
 
 (q/defsketch assignment3
@@ -95,48 +106,4 @@
   :draw draw-state
   :key-pressed keyboard-action
   :features [:keep-on-top])
-
-#_((defn setup []
-  ; Set frame rate to 30 frames per second.
-  (q/frame-rate 30)
-  ; Set color mode to HSB (HSV) instead of default RGB.
-  (q/color-mode :hsb)
-  ; setup function returns initial state. It contains
-  ; circle color and position.
-  {:color 0
-   :angle 0})
-
-(defn update-state [state]
-  ; Update sketch state by changing circle color and position.
-  {:color (mod (+ (:color state) 0.7) 255)
-   :angle (+ (:angle state) 0.1)})
-
-(defn draw-state [state]
-  ; Clear the sketch by filling it with light-grey color.
-  (q/background 240)
-  ; Set circle color.
-  (q/fill (:color state) 255 255)
-  ; Calculate x and y coordinates of the circle.
-  (let [angle (:angle state)
-        x (* 150 (q/cos angle))
-        y (* 150 (q/sin angle))]
-    ; Move origin point to the center of the sketch.
-    (q/with-translation [(/ (q/width) 2)
-                         (/ (q/height) 2)]
-      ; Draw the circle.
-      (q/ellipse x y 100 100))))
-
-(q/defsketch assignment3
-  :title "You spin my circle right round"
-  :size [500 500]
-  ; setup function called only once, during sketch initialization.
-  :setup setup
-  ; update-state is called on each iteration before draw-state.
-  :update update-state
-  :draw draw-state
-  :features [:keep-on-top]
-  ; This sketch uses functional-mode middleware.
-  ; Check quil wiki for more info about middlewares and particularly
-  ; fun-mode.
-  :middleware [m/fun-mode]))
 
