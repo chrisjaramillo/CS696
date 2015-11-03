@@ -47,10 +47,6 @@
 (defn init-command-list [file-name]
   (reset! todo-commands (into [] (read-comand-file file-name))))
 
-(defn setup []
-  (q/frame-rate 60)
-  (init-command-list "turtleTester.txt"))
-
 (defn run-completed
   []
   (q/background 240)
@@ -96,6 +92,10 @@
   (run-completed)
   (q/reset-matrix)
   (q/text @command-message 10 10))
+
+(defn setup []
+  (q/frame-rate 60)
+  (init-command-list "turtleTester.txt"))
 
 (q/defsketch assignment3
   :title "Assignment3: Turtle Graphics"
