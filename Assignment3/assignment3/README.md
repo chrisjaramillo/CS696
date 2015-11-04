@@ -1,6 +1,6 @@
 # assignment3
 
-A Quil sketch designed to ... well, that part is up to you.
+A Quil sketch program.
 
 ## Usage
 
@@ -10,9 +10,12 @@ Emacs - run cider, open `core.clj` and press `C-c C-k` to evaluate the file.
 
 REPL - run `(require 'assignment3.core)`.
 
-## License
+The function that must be executed to start the program is defsketch.
 
-Copyright © 2014 FIXME
+The program reads from a file named turtleTester.txt in the resources directory. The format of the commands in the file is:
 
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+pen up
+pen down
+move <an integer value>
+turn <an integer value>
+

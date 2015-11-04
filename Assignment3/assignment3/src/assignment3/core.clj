@@ -5,6 +5,8 @@
 
 (def command-message (atom ""))
 
+(def pen-state (atom "down"))
+
 (defmulti exec :command)
 
 (def todo-commands (atom []))
@@ -15,13 +17,12 @@
 
 (defmethod exec "pen" [x]
   (reset! command-message (str "pen " (:value x)))
-  (if (= "up" (:value x))
-    (q/no-stroke)
-    (q/stroke 0 0 0)))
+  (reset! pen-state (:value x)))
 
 (defmethod exec "move" [x]
   (reset! command-message (str "move " (:value x)))
-  (q/line 0 0 (read-string (:value x)) 0)
+  (when (= @pen-state "down")
+    (q/line 0 0 (read-string (:value x)) 0))
   (q/translate (read-string (:value x)) 0))
 
 (defmethod exec "turn" [x]
@@ -45,11 +46,12 @@
   (map (partial vec->map command-keys) (file->coll file-name)))
 
 (defn init-command-list [file-name]
-  (reset! todo-commands (into [] (read-comand-file file-name))))
+  (reset! todo-commands (reverse (into '() (read-comand-file file-name)))))
 
 (defn run-completed
   []
   (q/background 240)
+  (reset! pen-state "down")
   (doseq [command @completed-commands]
     (exec command)))
 
