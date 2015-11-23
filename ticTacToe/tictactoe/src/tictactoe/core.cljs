@@ -1,5 +1,6 @@
-(ns tictactoe.core
-  (:require [reagent.core :as reagent :refer [atom]]))
+(ns ^:figwheel-always tictactoe.core
+  (:require [reagent.core :as reagent :refer [atom]]
+            [cljs.test :refer-macros [deftest is]]))
 
 (enable-console-print!)
 
@@ -26,6 +27,12 @@
       (assoc-in board move "C")
       board)))
 
+(deftest computer-move-test
+  (is (= [["C"]]
+         (computer-move [["B"]])))
+  (is (= [["P"]]
+         (computer-move [["P"]]))))
+
 (defn straight [owner board [x y] [dy dx] n]
   (every? true?
          (for [i (range n)]
@@ -40,8 +47,18 @@
               dir [[1 0] [0 1] [1 1] [1 -1]]]
           (straight owner board [i j] dir n))))
 
+(deftest win?-test
+  (is (win? "P" [["P"]] 1))
+  (is (not (win? "P" [["P"]] 2)))
+  (is (win? "P" [["C" "P"]
+                 ["P" "C"]] 2)))
+
 (defn full? [board]
   (every? #{"P" "C"} (apply concat board)))
+
+(deftest full?-test
+  (is (not (full? [["P" "B"]])))
+  (is (full? [["P" "C"]])))
 
 (defn game-status [board]
   (cond
