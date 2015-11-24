@@ -7,7 +7,18 @@
 
 ;; define your app data so that it doesn't get over-written on reload
 
-(defonce app-state (r/atom {:text "Hello world!" :draw-state :none :shape :none :start 0 :end 0 :clicks 0 :shapes '() :current-x 0 :current-y 0}))
+(defonce app-state (r/atom {:text "Hello world!"
+                            :draw-state :none
+                            :shape :none
+                            :start 0
+                            :end 0
+                            :clicks 0
+                            :shapes '()
+                            :current-x 0
+                            :current-y 0
+                            :start-x 0
+                            :start-y 0
+                            :current-shape '()}))
 
 (defn rectangle-click
   []
@@ -31,36 +42,58 @@
   (swap! app-state assoc-in [:shape] :line))
 
 (defn draw-circle
-  []
-  (if (= (@app-state :clicks) 1)
-    (swap! app-state assoc-in [:start]
-           )
-    (swap! app-state assoc-in [:text] "STOPPING"))
-  (println app-state))
+  [x]
+  (let [deltaX (- (:current-x @app-state) (:start-x @app-state))
+        deltaY (- (:current-y @app-state) (:start-y @app-state))
+        deltaX2 (Math/pow deltaX 2)
+        deltaY2 (Math/pow deltaY 2)
+        radius (Math/sqrt (+ deltaX2 deltaY2))]
+    (swap! app-state assoc-in [:current-shape] (list [:circle {:cx (:start-x @app-state) :cy (:start-y @app-state) :r radius}]))))
 
 (defn draw-line
   [x]
-  (swap! app-state update-in [:shapes] conj (list [:line {:x1 (-> x .-clientX) :y1 (-> x .-clientY) :x2 (:current-x @app-state) :y2 (:current-y @app-state)}]) ))
+  (println @app-state)
+  (swap! app-state assoc-in [:current-shape] (list [:line {:x1 (:start-x @app-state) :y1 (:start-y @app-state) :x2 (:current-x @app-state) :y2 (:current-y @app-state)}])))
 
 (defn draw-rectangle
-  [])
+  [x]
+  (let [width (- (:current-x @app-state) (:start-x @app-state))
+        height (- (:current-y @app-state) (:start-y @app-state))]
+    (swap! app-state assoc-in [:current-shape] (list [:rect {:x (:start-x @app-state)
+                                                             :y (:start-y @app-state)
+                                                             :width width
+                                                             :height height
+                                                             :fill "none"}]))))
+
+(defn start-drawing
+  [x]
+  (swap! app-state assoc-in [:start-x] (-> x .-clientX))
+  (swap! app-state assoc-in [:start-y] (-> x .-clientY))
+  (swap! app-state assoc-in [:draw-state] :started))
+
+(defn finish-drawing
+  [x]
+  (swap! app-state assoc-in [:draw-state] :done)
+  (swap! app-state update-in [:shapes] conj (:current-shape @app-state))
+  (swap! app-state assoc-in [:current-shape] '()))
 
 (defn drawing-click
   [x]
-  (if (= (@app-state :draw-state) :selected)
-    ((swap! app-state assoc-in [:text] (str (@app-state :shape) " DRAWING"))
-      (cond
-        (= (@app-state :shape) :rectangle) draw-rectangle
-        (= (@app-state :shape) :circle) draw-circle
-        (= (@app-state :shape) :line) (draw-line x)))
-    (swap! app-state assoc-in [:text] "NOT DRAWING"))
-  (println (str (-> x .-clientX) " " (-> x .-clientY)))
-  )
+  (cond
+    (= (@app-state :draw-state) :selected) (start-drawing x)
+    (= (@app-state :draw-state) :started) (finish-drawing x))
+  (println @app-state))
 
 (defn mouse-moving
   [x]
   (swap! app-state assoc-in [:current-x] (-> x .-clientX))
-  (swap! app-state assoc-in [:current-y] (-> x .-clientY)))
+  (swap! app-state assoc-in [:current-y] (-> x .-clientY))
+  (when (= (@app-state :draw-state) :started)
+    (cond
+      (= (@app-state :shape) :line)(draw-line x)
+      (= (@app-state :shape) :circle)(draw-circle x)
+      (= (@app-state :shape) :rectangle)(draw-rectangle x)))
+  )
 
 (defn hello-world []
   [:div
@@ -69,6 +102,7 @@
           :on-click drawing-click
           :on-mouse-move mouse-moving}
     (:shapes @app-state)
+    (:current-shape @app-state)
     ]
     [:h1 (:text @app-state)]
    [:svg {:width 800 :height 100 :stroke "black" :style {:position :fixed :top 800 :left 0 :border "blue solid 1px"}}
