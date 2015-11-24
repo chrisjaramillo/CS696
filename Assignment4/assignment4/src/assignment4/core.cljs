@@ -7,8 +7,7 @@
 
 ;; define your app data so that it doesn't get over-written on reload
 
-(defonce app-state (r/atom {:text "Hello world!"
-                            :draw-state :none
+(defonce app-state (r/atom {:draw-state :none
                             :shape :none
                             :start 0
                             :end 0
@@ -28,7 +27,8 @@
 (defn undo-click
   []
   (swap! app-state assoc-in [:draw-state] :none)
-  (swap! app-state assoc-in [:shape] :none))
+  (swap! app-state assoc-in [:shape] :none)
+  (swap! app-state assoc-in [:shapes] (pop (:shapes @app-state))))
 
 (defn circle-click
   []
@@ -48,7 +48,7 @@
         deltaX2 (Math/pow deltaX 2)
         deltaY2 (Math/pow deltaY 2)
         radius (Math/sqrt (+ deltaX2 deltaY2))]
-    (swap! app-state assoc-in [:current-shape] (list [:circle {:cx (:start-x @app-state) :cy (:start-y @app-state) :r radius}]))))
+    (swap! app-state assoc-in [:current-shape] (list [:circle {:cx (:start-x @app-state) :cy (:start-y @app-state) :fill "none" :r radius}]))))
 
 (defn draw-line
   [x]
@@ -103,8 +103,7 @@
           :on-mouse-move mouse-moving}
     (:shapes @app-state)
     (:current-shape @app-state)
-    ]
-    [:h1 (:text @app-state)]
+   ]
    [:svg {:width 800 :height 100 :stroke "black" :style {:position :fixed :top 800 :left 0 :border "blue solid 1px"}}
     [:text {:x 70 :y 50 } "LINE"]
     [:text {:x 450 :y 50} "RECTANGLE"]
