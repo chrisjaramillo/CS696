@@ -57,10 +57,12 @@
 
 (defn draw-rectangle
   [x]
-  (let [width (- (:current-x @app-state) (:start-x @app-state))
-        height (- (:current-y @app-state) (:start-y @app-state))]
-    (swap! app-state assoc-in [:current-shape] (list [:rect {:x (:start-x @app-state)
-                                                             :y (:start-y @app-state)
+  (let [width (Math/abs (- (:current-x @app-state) (:start-x @app-state)))
+        height (Math/abs(- (:current-y @app-state) (:start-y @app-state)))
+        begin-x (min (:start-x @app-state) (:current-x @app-state))
+        begin-y (min (:start-y @app-state) (:current-y @app-state))]
+    (swap! app-state assoc-in [:current-shape] (list [:rect {:x begin-x
+                                                             :y begin-y
                                                              :width width
                                                              :height height
                                                              :fill "none"}]))))
@@ -73,7 +75,7 @@
 
 (defn finish-drawing
   [x]
-  (swap! app-state assoc-in [:draw-state] :done)
+  (swap! app-state assoc-in [:draw-state] :selected)
   (swap! app-state update-in [:shapes] conj (:current-shape @app-state))
   (swap! app-state assoc-in [:current-shape] '()))
 
