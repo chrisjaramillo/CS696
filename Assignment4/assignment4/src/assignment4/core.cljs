@@ -26,9 +26,14 @@
 
 (defn undo-click
   []
-  (swap! app-state assoc-in [:draw-state] :none)
-  (swap! app-state assoc-in [:shape] :none)
-  (swap! app-state assoc-in [:shapes] (pop (:shapes @app-state))))
+  (if (= (:draw-state @app-state) :selected)
+    (do
+      (swap! app-state assoc-in [:draw-state] :none)
+      (swap! app-state assoc-in [:shape] :none))
+      (when (seq (:shapes @app-state))
+    (swap! app-state assoc-in [:shapes] (pop (:shapes @app-state))))
+    )
+  )
 
 (defn circle-click
   []
@@ -37,9 +42,10 @@
   )
 
 (defn line-click
-  []
+  [x]
   (swap! app-state assoc-in [:draw-state] :selected)
-  (swap! app-state assoc-in [:shape] :line))
+  (swap! app-state assoc-in [:shape] :line)
+  (println (-> x .-target .-id)))
 
 (defn draw-circle
   [x]
@@ -104,20 +110,16 @@
           :on-click drawing-click
           :on-mouse-move mouse-moving}
     (:shapes @app-state)
-    (:current-shape @app-state)
-   ]
-   [:svg {:width 800 :height 100 :stroke "black" :style {:position :fixed :top 800 :left 0 :border "blue solid 1px"}}
-    [:text {:x 70 :y 50 } "LINE"]
-    [:text {:x 450 :y 50} "RECTANGLE"]
-    [:text {:x 670 :y 50} "UNDO"]
-    [:text {:x 270 :y 50 } "CIRCLE"]
-    [:rect {:x 0 :y 0 :width 200 :height 100 :fill "white" :fill-opacity "0.0" :on-click line-click}]
-    [:rect {:x 200 :y 0 :width 200 :height 100 :fill "white" :fill-opacity "0.0" :on-click circle-click}]
-    [:rect {:x 400 :y 0 :width 200 :height 100 :fill "white" :fill-opacity "0.0" :on-click rectangle-click}]
-    [:rect {:x 600 :y 0 :width 200 :height 100 :fill "white" :fill-opacity "0.0" :on-click undo-click}]
-    ]
-   ]
-  )
+    (:current-shape @app-state)]
+   [:svg {:width 800 :height 115 :stroke "black" :style {:position :fixed :top 800 :left 0 :border "none"}}
+    [:text {:x 80 :y 65 } "LINE"]
+    [:rect {:id :line :x 10 :y 10 :width 180 :height 100 :fill "white" :fill-opacity "0.0" :rx "20" :ry "20" :stroke-width "3" :on-click line-click }]
+    [:text {:x 270 :y 65 } "CIRCLE"]
+    [:rect {:id :circle :x 210 :y 10 :width 180 :height 100 :fill "white" :fill-opacity "0.0" :rx "20" :ry "20" :stroke-width "3" :on-click circle-click}]
+    [:text {:x 455 :y 65} "RECTANGLE"]
+    [:rect {:id :rectangle :x 410 :y 10 :width 180 :height 100 :fill "white" :fill-opacity "0.0" :rx "20" :ry "20" :stroke-width "3" :on-click rectangle-click}]
+    [:text {:x 680 :y 65} "UNDO"]
+    [:rect {:id :undo :x 610 :y 10 :width 180 :height 100 :fill "white" :fill-opacity "0.0" :rx "20" :ry "20" :stroke-width "3" :on-click undo-click}]]])
 
 (r/render-component [hello-world]
                           (. js/document (getElementById "app")))
