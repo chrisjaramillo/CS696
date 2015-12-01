@@ -23,13 +23,51 @@
 
 ;; Cursors
 (def draw-state (r/cursor app-state [:draw-state]))
+
 (def selected-shape (r/cursor app-state [:shape]))
+
 (def shape-list (r/cursor app-state [:shapes]))
+
 (def current-x (r/cursor app-state [:current-x]))
+
 (def current-y (r/cursor app-state [:current-y]))
+
 (def start-x (r/cursor app-state [:start-x]))
+
 (def start-y (r/cursor app-state [:start-y]))
+
 (def current-shape (r/cursor app-state [:current-shape]))
+
+;; Cursor setters
+(defn set-draw-state!
+  [x]
+  {:pre [(s/validate draw-states x)]}
+  (reset! draw-state x))
+
+(defn set-selected-shape!
+  [x]
+  {:pre [(s/validate shapes x)]}
+  (reset! selected-shape x))
+
+(defn set-current-x!
+  [x]
+  {:pre [s/validate s/Num x]}
+  (reset! current-x x))
+
+(defn set-current-y!
+  [x]
+  {:pre [s/validate s/Num x]}
+  (reset! current-y x))
+
+(defn set-start-x!
+  [x]
+  {:pre [s/validate s/Num x]}
+  (reset! start-x x))
+
+(defn set-start-y!
+  [x]
+  {:pre [s/validate s/Num x]}
+  (reset! start-y x))
 
 ;;Shape drawing
 (defn draw-circle
@@ -55,28 +93,28 @@
 
 (defn start-drawing
   [x]
-  (reset! start-x (-> x .-clientX))
-  (reset! start-y (-> x .-clientY))
-  (reset! draw-state :started))
+  (set-start-x! (-> x .-clientX))
+  (set-start-y! (-> x .-clientY))
+  (set-draw-state! :started))
 
 (defn finish-drawing
   []
-  (reset! draw-state :selected)
+  (set-draw-state! :selected)
   (swap! shape-list conj @current-shape)
   (reset! current-shape '()))
 
 ;; Click handling
 (defn shape-click
   [x]
-  (reset! draw-state :selected)
-  (reset! selected-shape (keyword (-> x .-target .-id))))
+  (set-draw-state! :selected)
+  (set-selected-shape! (keyword (-> x .-target .-id))))
 
 (defn undo-click
   []
   (if (= @draw-state :selected)
     (do
-      (reset! draw-state :none)
-      (reset! selected-shape :none))
+      (set-draw-state! :none)
+      (set-selected-shape! :none))
     (when (seq @shape-list)
       (swap! shape-list pop @shape-list))))
 
@@ -88,8 +126,8 @@
 
 (defn mouse-moving
   [x]
-  (reset! current-x (-> x .-clientX))
-  (reset! current-y (-> x .-clientY))
+  (set-current-x! (-> x .-clientX))
+  (set-current-y! (-> x .-clientY))
   (when (= @draw-state :started)
     (cond
       (= @selected-shape :line)(draw-line)
@@ -101,7 +139,7 @@
   (let [[text-x title id rect-x handler] xs]
     (list
      [:text {:x text-x :y 65} title]
-     [:rect {:id id :x rect-x :y 10 :width 180 :height 100 :fill "white" :fill-opacity "0.0" :rx "20" :ry "20" :stroke-width "3" :on-click handler}])))
+     [:rect#blah {:id id :x rect-x :y 10 :width 180 :height 100 :fill-opacity "0.3" :rx "20" :ry "20" :stroke-width "3" :on-click handler}])))
 
 (defn drawing-area
   []
