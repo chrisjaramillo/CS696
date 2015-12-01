@@ -1,128 +1,134 @@
+;; Christopher Jaramillo
+;; CS 696
+;; Spring 2015
+;; Assignment 4 part 2
+
 (ns assignment4.core
-  (:require [reagent.core :as r]))
+  (:require [reagent.core :as r]
+            [schema.core :as s :include-macros true]))
 
-(enable-console-print!)
-
-(println "Edits to this text should show up in your developer console.")
+(def shapes (s/enum :none :circle :line :rectangle))
+(def draw-states (s/enum :none :selected :started))
 
 ;; define your app data so that it doesn't get over-written on reload
-
-(defonce app-state (r/atom {:draw-state :none
-                            :shape :none
-                            :start 0
-                            :end 0
-                            :clicks 0
+;; Schema defined ratom
+(defonce app-state (r/atom {:draw-state draw-states
+                            :shape shapes
                             :shapes '()
-                            :current-x 0
-                            :current-y 0
-                            :start-x 0
-                            :start-y 0
+                            :current-x s/Num
+                            :current-y s/Num
+                            :start-x s/Num
+                            :start-y s/Num
                             :current-shape '()}))
 
-(defn rectangle-click
-  []
-  (swap! app-state assoc-in [:draw-state] :selected)
-  (swap! app-state assoc-in [:shape] :rectangle))
+;; Cursors
+(def draw-state (r/cursor app-state [:draw-state]))
+(def selected-shape (r/cursor app-state [:shape]))
+(def shape-list (r/cursor app-state [:shapes]))
+(def current-x (r/cursor app-state [:current-x]))
+(def current-y (r/cursor app-state [:current-y]))
+(def start-x (r/cursor app-state [:start-x]))
+(def start-y (r/cursor app-state [:start-y]))
+(def current-shape (r/cursor app-state [:current-shape]))
 
-(defn undo-click
-  []
-  (if (= (:draw-state @app-state) :selected)
-    (do
-      (swap! app-state assoc-in [:draw-state] :none)
-      (swap! app-state assoc-in [:shape] :none))
-      (when (seq (:shapes @app-state))
-    (swap! app-state assoc-in [:shapes] (pop (:shapes @app-state))))
-    )
-  )
-
-(defn circle-click
-  []
-  (swap! app-state assoc-in [:draw-state] :selected)
-  (swap! app-state assoc-in [:shape] :circle)
-  )
-
-(defn line-click
-  [x]
-  (swap! app-state assoc-in [:draw-state] :selected)
-  (swap! app-state assoc-in [:shape] :line)
-  (println (-> x .-target .-id)))
-
+;;Shape drawing
 (defn draw-circle
-  [x]
-  (let [deltaX (- (:current-x @app-state) (:start-x @app-state))
-        deltaY (- (:current-y @app-state) (:start-y @app-state))
+  []
+  (let [deltaX (- @current-x @start-x)
+        deltaY (- @current-y @start-y)
         deltaX2 (Math/pow deltaX 2)
         deltaY2 (Math/pow deltaY 2)
         radius (Math/sqrt (+ deltaX2 deltaY2))]
-    (swap! app-state assoc-in [:current-shape] (list [:circle {:cx (:start-x @app-state) :cy (:start-y @app-state) :fill "none" :r radius}]))))
+    (reset! current-shape (list [:circle {:cx @start-x :cy @start-y :fill "none" :r radius}]))))
 
 (defn draw-line
-  [x]
-  (println @app-state)
-  (swap! app-state assoc-in [:current-shape] (list [:line {:x1 (:start-x @app-state) :y1 (:start-y @app-state) :x2 (:current-x @app-state) :y2 (:current-y @app-state)}])))
+  []
+  (reset! current-shape (list [:line {:x1 @start-x :y1 @start-y :x2 @current-x :y2 @current-y}])))
 
 (defn draw-rectangle
-  [x]
-  (let [width (Math/abs (- (:current-x @app-state) (:start-x @app-state)))
-        height (Math/abs(- (:current-y @app-state) (:start-y @app-state)))
-        begin-x (min (:start-x @app-state) (:current-x @app-state))
-        begin-y (min (:start-y @app-state) (:current-y @app-state))]
-    (swap! app-state assoc-in [:current-shape] (list [:rect {:x begin-x
-                                                             :y begin-y
-                                                             :width width
-                                                             :height height
-                                                             :fill "none"}]))))
+  []
+  (let [width (Math/abs (- @current-x @start-x))
+        height (Math/abs(- @current-y @start-y))
+        begin-x (min @start-x @current-x)
+        begin-y (min @start-y @current-y)]
+    (reset! current-shape (list [:rect {:x begin-x :y begin-y :width width :height height :fill "none"}]))))
 
 (defn start-drawing
   [x]
-  (swap! app-state assoc-in [:start-x] (-> x .-clientX))
-  (swap! app-state assoc-in [:start-y] (-> x .-clientY))
-  (swap! app-state assoc-in [:draw-state] :started))
+  (reset! start-x (-> x .-clientX))
+  (reset! start-y (-> x .-clientY))
+  (reset! draw-state :started))
 
 (defn finish-drawing
+  []
+  (reset! draw-state :selected)
+  (swap! shape-list conj @current-shape)
+  (reset! current-shape '()))
+
+;; Click handling
+(defn shape-click
   [x]
-  (swap! app-state assoc-in [:draw-state] :selected)
-  (swap! app-state update-in [:shapes] conj (:current-shape @app-state))
-  (swap! app-state assoc-in [:current-shape] '()))
+  (reset! draw-state :selected)
+  (reset! selected-shape (keyword (-> x .-target .-id))))
+
+(defn undo-click
+  []
+  (if (= @draw-state :selected)
+    (do
+      (reset! draw-state :none)
+      (reset! selected-shape :none))
+    (when (seq @shape-list)
+      (swap! shape-list pop @shape-list))))
 
 (defn drawing-click
   [x]
   (cond
-    (= (@app-state :draw-state) :selected) (start-drawing x)
-    (= (@app-state :draw-state) :started) (finish-drawing x))
-  (println @app-state))
+    (= @draw-state :selected) (start-drawing x)
+    (= @draw-state :started) (finish-drawing)))
 
 (defn mouse-moving
   [x]
-  (swap! app-state assoc-in [:current-x] (-> x .-clientX))
-  (swap! app-state assoc-in [:current-y] (-> x .-clientY))
-  (when (= (@app-state :draw-state) :started)
+  (reset! current-x (-> x .-clientX))
+  (reset! current-y (-> x .-clientY))
+  (when (= @draw-state :started)
     (cond
-      (= (@app-state :shape) :line)(draw-line x)
-      (= (@app-state :shape) :circle)(draw-circle x)
-      (= (@app-state :shape) :rectangle)(draw-rectangle x)))
-  )
+      (= @selected-shape :line)(draw-line)
+      (= @selected-shape :circle)(draw-circle)
+      (= @selected-shape :rectangle)(draw-rectangle))))
 
-(defn hello-world []
-  [:div
+(defn shape-button
+  [xs]
+  (let [[text-x title id rect-x handler] xs]
+    (list
+     [:text {:x text-x :y 65} title]
+     [:rect {:id id :x rect-x :y 10 :width 180 :height 100 :fill "white" :fill-opacity "0.0" :rx "20" :ry "20" :stroke-width "3" :on-click handler}])))
+
+(defn drawing-area
+  []
+  (list
    [:svg {:width 800 :height 800 :stroke "black"
           :style {:position :fixed :top 0 :left 0 :border "red solid 1px"}
           :on-click drawing-click
           :on-mouse-move mouse-moving}
-    (:shapes @app-state)
-    (:current-shape @app-state)]
-   [:svg {:width 800 :height 115 :stroke "black" :style {:position :fixed :top 800 :left 0 :border "none"}}
-    [:text {:x 80 :y 65 } "LINE"]
-    [:rect {:id :line :x 10 :y 10 :width 180 :height 100 :fill "white" :fill-opacity "0.0" :rx "20" :ry "20" :stroke-width "3" :on-click line-click }]
-    [:text {:x 270 :y 65 } "CIRCLE"]
-    [:rect {:id :circle :x 210 :y 10 :width 180 :height 100 :fill "white" :fill-opacity "0.0" :rx "20" :ry "20" :stroke-width "3" :on-click circle-click}]
-    [:text {:x 455 :y 65} "RECTANGLE"]
-    [:rect {:id :rectangle :x 410 :y 10 :width 180 :height 100 :fill "white" :fill-opacity "0.0" :rx "20" :ry "20" :stroke-width "3" :on-click rectangle-click}]
-    [:text {:x 680 :y 65} "UNDO"]
-    [:rect {:id :undo :x 610 :y 10 :width 180 :height 100 :fill "white" :fill-opacity "0.0" :rx "20" :ry "20" :stroke-width "3" :on-click undo-click}]]])
+    (list @shape-list)
+    (list @current-shape)]))
 
-(r/render-component [hello-world]
-                          (. js/document (getElementById "app")))
+(defn buttons
+  []
+  (list
+   [:svg {:width 800 :height 115 :stroke "black" :style {:position :fixed :top 800 :left 0 :border "none"}}
+    (shape-button [80 "LINE" :line 10 shape-click])
+    (shape-button [270 "CIRCLE" :circle 210 shape-click])
+    (shape-button [455 "RECTANGLE" :rectangle 410 shape-click])
+    (shape-button [680 "UNDO" :undo 610 undo-click])]))
+
+(defn main []
+  [:div
+   (drawing-area)
+   (buttons)])
+
+(r/render-component [main]
+                    (. js/document (getElementById "app")))
 
 
 (defn on-js-reload []
