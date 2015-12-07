@@ -139,7 +139,7 @@
   (let [[text-x title id rect-x handler] xs]
     (list
      [:text {:x text-x :y 65} title]
-     [:rect#blah {:id id :x rect-x :y 10 :width 180 :height 100 :fill-opacity "0.3" :rx "20" :ry "20" :stroke-width "3" :on-click handler}])))
+     [:rect {:id id :x rect-x :y 10 :width 180 :height 100 :fill-opacity "0.3" :rx "20" :ry "20" :stroke-width "3" :on-click handler}])))
 
 (defn drawing-area
   []
