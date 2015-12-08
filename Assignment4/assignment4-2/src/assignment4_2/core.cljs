@@ -1,12 +1,32 @@
-;; Christopher Jaramillo
-;; CS 696
-;; Spring 2015
-;; Assignment 4 part 2
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Christopher Jaramillo  ;;
+;; CS 696                 ;;
+;; Spring 2015            ;;
+;; Assignment 4 part 2    ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (ns assignment4-2.core
   (:require [reagent.core :as r]
             [schema.core :as s :include-macros true]))
 
+;;;;;;;;;;;;;;;;;;
+;;  Constants   ;;
+;;;;;;;;;;;;;;;;;;
+(def drawing-area-x-offset 40)
+
+(def drawing-area-y-offset 40)
+
+(def drawing-area-width 600)
+
+(def drawing-area-height 600)
+
+(def palette-x-offset (+ drawing-area-x-offset drawing-area-width 20))
+
+(def palette-y-offset (+ drawing-area-y-offset 20))
+
+;;;;;;;;;;;;;;;;;;
+;; Ratom/schema ;;
+;;;;;;;;;;;;;;;;;;
 (enable-console-print!)
 
 (println "Edits to this text should show up in your developer console.")
@@ -15,13 +35,25 @@
 
 (def point-schema {:x s/Num :y s/Num})
 
+(def line-schema {:start-point point-schema :end-point point-schema})
+
+(def rectangle-schema {:start-point point-schema :width s/Num :height s/Num})
+
 (def palette-shapes (s/enum :none :circle :line :rect))
 
 (def drawing-states (s/enum :none :selected :drawing))
 
-(defonce app-state (r/atom {:selection :none :drawing-state :none :start-point {} :end-point {} :clicks [] :draw-fn ()}))
+(defonce app-state (r/atom {:selection :none
+                            :drawing-state :none
+                            :start-point {}
+                            :end-point {}
+                            :clicks []
+                            :draw-fn ()
+                            :palette-tooltip ""}))
 
-;;Cursors
+;;;;;;;;;;;;;;;;;
+;;   Cursors   ;;
+;;;;;;;;;;;;;;;;;
 (def selection (r/cursor app-state [:selection]))
 
 (defn set-selected-shape!
@@ -66,20 +98,15 @@
   [x]
   (reset! draw-fn x))
 
-;; Constants
-(def drawing-area-x-offset 40)
+(def palette-tooltip (r/cursor app-state [:palette-tooltip]))
 
-(def drawing-area-y-offset 40)
+(defn set-palette-tooltip!
+  [x]
+  (reset! palette-tooltip x))
 
-(def drawing-area-width 600)
-
-(def drawing-area-height 600)
-
-(def palette-x-offset (+ drawing-area-x-offset drawing-area-width 20))
-
-(def palette-y-offset (+ drawing-area-y-offset 20))
-
-;; Helpers
+;;;;;;;;;;;;;;;;;
+;;   Helpers   ;;
+;;;;;;;;;;;;;;;;;
 (defn start-drawing
  [x]
   (let [start-x (-> x .-clientX)
@@ -94,10 +121,12 @@
   (let [end-x (-> x .-clientX)
         end-y (-> x .-clientY)
         end-point {:x end-x :y end-y}]
-  (add-click! {:type :finish-drawing :info end-point})
-  (set-draw-state! :selected)))
+    (add-click! {:type :finish-drawing :info end-point})
+    (set-draw-state! :selected)))
 
-;; Drawing Functions
+;;;;;;;;;;;;;;;;;;;
+;;  Drawing fns  ;;
+;;;;;;;;;;;;;;;;;;;
 (defn draw-circle
   []
   (let [deltaX (- (:x @end-point) (:x @start-point))
@@ -119,7 +148,9 @@
         begin-y (min @start-y @current-y)]
     (reset! current-shape (list [:rect {:x begin-x :y begin-y :width width :height height :fill "none"}]))))
 
-;; Mouse Event handlers
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Mouse Event handlers ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defmulti handle-click
   (fn [x]
     (-> x .-target .-id)))
@@ -127,18 +158,15 @@
 (defmethod handle-click :default
   [x]
   (let [id (-> x .-target .-id)]
-    (set-selected-shape! (keyword id))
-    (add-click! {:type :shape-select :id id})
-    (when-not (= @drawing-state :drawing)
-      (set-draw-state! :selected)))
-  (set-draw-fn draw-circle)
+    (add-click! {:type :shape-select :id id}))
   (println @app-state))
 
 (defmethod handle-click "drawing-area"
   [x]
-  (cond
-   (= @drawing-state :selected)(start-drawing x)
-   (= @drawing-state :drawing)(finish-drawing x))
+  (let [x-position (-> x .-clientX)
+        y-position (-> x .-clientY)
+        point {:x x-position :y y-position}]
+    (add-click! {:type :drawing-area-click :position point}))
   (println @app-state))
 
 (defmethod handle-click "undo"
@@ -149,18 +177,31 @@
 
 (defn handle-move
   [x]
-  (let [end-x (-> x .-clientX)
-        end-y (-> x .-clientY)
-        end-point {:x end-x :y end-y}]
-    (set-end-point! end-point))
+  (when (= @drawing-state :drawing)
+    (let [end-x (-> x .-clientX)
+          end-y (-> x .-clientY)
+          end-point {:x end-x :y end-y}]
+      (set-end-point! end-point)))
   (println @app-state))
 
-(defn drawn-shapes
+(defn click->command
+  [x]
+  )
+
+(defn process-clicks
   []
+  (let [commands (map click->command @clicks)])
   ;(@draw-fn)
   )
 
-;; Drawn areas
+(defn handle-mouseover
+  [x]
+  (let [id (-> x .-target .-id)]
+  (set-palette-tooltip! id)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;      Drawn areas     ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn drawing-area
   []
   (list
@@ -170,7 +211,7 @@
                                   :border "red solid 2px"}
                                   :on-click handle-click
                                   :on-mouse-move handle-move}
-    (drawn-shapes)
+    (process-clicks)
     ;(@draw-fn)
     ]))
 
@@ -180,14 +221,14 @@
         box-left (+ drawing-area-x-offset drawing-area-width 80)
         box-width 100
         box-height (- drawing-area-height 160)]
-    [:svg {:id "palette-svg" :width box-width :height box-height :stroke "black" :style {:position :fixed :top box-top :left box-left :border "none"}}
-     [:line {:id "palette-line" :x1 5 :y1 5 :x2 (- box-width 5) :y2 (- (/ box-height 3) 5)}]
-     [:rect {:id "line" :x 0 :y 0 :width box-width :height (/ box-height 3) :fill-opacity "0.0" :stroke-width "3px" :on-click handle-click}]
-     [:circle {:id "palette-circle" :cx (/ box-width 2) :cy (+ (/ box-height 3) (/ (/ box-height 3) 2)) :r (- (/ box-width 2) 5) :fill "none"}]
-     [:rect {:id "circle" :x 0 :y (/ box-height 3) :width box-width :height (/ box-height 3) :fill-opacity "0.0" :stroke-width "3px" :on-click handle-click}]
-     [:rect {:id "palette-rect" :x 10 :y (+ (* (/ box-height 3) 2) 10) :width (- box-width 20) :height (- (/ box-height 3) 20) :fill-opacity "0.0"}]
-     [:rect {:id "rect" :x 0 :y (* (/ box-height 3) 2) :width box-width :height (/ box-height 3) :fill-opacity "0.0" :stroke-width "3px" :on-click handle-click}]
-     ]
+    [:div {:id "palette-div" :title @palette-tooltip}[:svg {:id "palette-svg" :width box-width :height box-height :stroke "black" :style {:position :fixed :top box-top :left box-left :border "none" :title "svgsgsvgsv"}}
+     [:line {:id "palette-line" :x1 25 :y1 25 :x2 (- box-width 25) :y2 (- (/ box-height 3) 25) }]
+     [:rect {:id "line" :x 0 :y 0 :width box-width :height (/ box-height 3) :fill-opacity "0.0" :stroke-width "3px" :on-click handle-click :on-mouse-over handle-mouseover}]
+     [:circle {:id "palette-circle" :cx (/ box-width 2) :cy (+ (/ box-height 3) (/ (/ box-height 3) 2)) :r (- (/ box-width 2) 15) :fill "none"}]
+     [:rect {:id "circle" :x 0 :y (/ box-height 3) :width box-width :height (/ box-height 3) :fill-opacity "0.0" :stroke-width "3px" :on-click handle-click :on-mouse-over handle-mouseover}]
+     [:rect {:id "palette-rect" :x 15 :y (+ (* (/ box-height 3) 2) 15) :width (- box-width 30) :height (- (/ box-height 3) 30) :fill-opacity "0.0"}]
+     [:rect {:id "rect" :x 0 :y (* (/ box-height 3) 2) :width box-width :height (/ box-height 3) :fill-opacity "0.0" :stroke-width "3px" :on-click handle-click :on-mouse-over handle-mouseover}]
+     ]]
     )
   )
 
